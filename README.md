@@ -244,6 +244,61 @@ per_chrom_variant_counts.tsv
     * `bench/results/deepvariant_happy.*`
   * Precision, Recall, F1 extracted into summary tables for the report.
 
+
+## Results
+
+### Total Variant Counts
+
+From the final VCF files:
+
+| Caller      | Total Variants | SNPs    | INDELs |
+| ----------- | -------------- | ------- | ------ |
+| Clair3      | 90,372         | 77,448  | 12,967 |
+| DeepVariant | 115,150        | 105,567 | 9,586  |
+
+DeepVariant reports more total variants and substantially more SNPs, while Clair3 reports more INDELs in this reduced-coverage dataset.
+
+---
+
+### Benchmarking Results (GIAB v4.2.1, PASS variants, chr1–22)
+
+Values extracted from `clair3_happy.extended.csv` and `deepvariant_happy.extended.csv`.
+
+| Caller      | Variant | Filter | Precision | Recall   | F1-score |
+| ----------- | ------- | ------ | --------- | -------- | -------- |
+| Clair3      | SNP     | PASS   | 0.819215  | 0.010620 | 0.020968 |
+| Clair3      | INDEL   | PASS   | 0.661303  | 0.005754 | 0.011409 |
+| DeepVariant | SNP     | PASS   | 0.727231  | 0.005983 | 0.011869 |
+| DeepVariant | INDEL   | PASS   | 0.656781  | 0.003650 | 0.007259 |
+
+
+* Precision is moderate to high for both callers, especially for SNPs.
+* Recall is very low for both callers because only **¼ of the reads** were used, leading to low effective coverage.
+* Consequently, F1-scores are also low.
+* In a full-coverage dataset, DeepVariant is expected to significantly outperform in recall and F1, as shown in published benchmarks.
+
+---
+
+### Per-chromosome Variant Counts (excerpt)
+
+| Chromosome | Clair3 | DeepVariant |
+| ---------- | ------ | ----------- |
+| chr1       | 6,860  | 29,632      |
+| chr2       | 6,236  | 4,234       |
+| chr3       | 5,185  | 4,725       |
+| chr4       | 7,293  | 8,262       |
+| chr5       | 4,443  | 4,309       |
+| chr6       | 4,361  | 4,534       |
+| chr7       | 4,175  | 2,628       |
+| chr8       | 3,996  | 3,304       |
+| chr9       | 3,669  | 3,619       |
+| chr10      | 6,130  | 6,469       |
+| chr11      | 2,945  | 2,585       |
+| chr12      | 3,177  | 2,330       |
+| …          | …      | …           |
+
+Both callers show broadly similar chromosomal distributions, with DeepVariant generally producing higher counts, particularly on larger chromosomes.
+
 ## 🔹 Containerization
 
 This project was implemented using **Singularity/Apptainer containerization** to ensure full reproducibility on the HPC cluster. Two complementary containerization approaches were used:
