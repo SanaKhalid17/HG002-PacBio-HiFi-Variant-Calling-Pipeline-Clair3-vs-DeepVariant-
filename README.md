@@ -63,36 +63,71 @@ data/HG002.quarter.fastq
 
 ---
 
-## Pipeline Structure
+## Nextflow Workflow Implementation
 
-Conceptually, the pipeline is organized into the following stages (as in a DSL2 modular workflow):
+This variant calling pipeline was implemented using **Nextflow DSL2** to enable modular, containerized, and reproducible execution on HPC infrastructure.
 
-1. **ALIGN**
-   Input: FASTQ + Reference
-   Output: Sorted, indexed BAM
+### Main Execution Command
 
-2. **CALL_CLAIR3**
-   Input: BAM + Reference
-   Output: `clair3_out/merge_output.vcf.gz`
-
-3. **CALL_DEEPVARIANT**
-   Input: BAM + Reference
-   Output: `HG002.deepvariant.vcf.gz`
-
-4. **BENCHMARK_HAPPY**
-   Input: VCF + Truth VCF + BED + Reference
-   Output: `*_happy.summary.csv`, `*_happy.extended.csv`
-
-
-## Container Runtime Setup
-
-Because the cluster does not support `squashfuse`, containers are converted to sandboxes at runtime. Temporary directories are redirected to avoid `/tmp` space issues:
+Local execution:
 
 ```bash
-export APPTAINER_TMPDIR=$PWD/tmp_singularity
-export SINGULARITY_TMPDIR=$PWD/tmp_singularity
-export TMPDIR=$PWD/tmp_singularity
+nextflow run main.nf
 ```
+
+SLURM execution (recommended on cluster):
+
+```bash
+sbatch run_nf.slurm
+```
+
+The SLURM script internally runs:
+
+```bash
+nextflow run main.nf -profile slurm \
+  --reference ref/GRCh38_no_alt_analysis_set.fasta \
+  --reads data/HG002.quarter.fastq \
+  --truth_vcf bench/truth/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz \
+  --truth_bed bench/truth/HG002_GRCh38_1_22_v4.2.1_confident_regions.bed \
+  --sample HG002 \
+  --threads 8
+```
+
+---
+
+## Workflow Steps
+
+1. **ALIGN_READS**
+
+   * Align PacBio HiFi reads to GRCh38 using minimap2
+   * Sort and index BAM using samtools
+
+2. **CALL_DEEPVARIANT**
+
+   * Variant calling using DeepVariant (PACBIO model)
+
+3. **CALL_CLAIR3**
+
+   * Variant calling using Clair3 (HiFi mode)
+
+4. **HAPPY_CLAIR3**
+
+   * Benchmark Clair3 output using hap.py (vcfeval engine)
+
+5. **HAPPY_DEEPVARIANT**
+
+   * Benchmark DeepVariant output using hap.py (vcfeval engine)
+
+All tools were executed via Singularity containers to ensure reproducibility.
+
+---
+
+## Execution Summary
+
+* Runtime: **48 minutes 38 seconds**
+* CPU usage: **7.6 CPU hours**
+* Executor: Local (SLURM profile available)
+* Status: **Succeeded (5/5 processes)**
 
 ---
 
@@ -298,6 +333,17 @@ Values extracted from `clair3_happy.extended.csv` and `deepvariant_happy.extende
 | …          | …      | …           |
 
 Both callers show broadly similar chromosomal distributions, with DeepVariant generally producing higher counts, particularly on larger chromosomes.
+
+---
+
+## Benchmarking Results (DeepVariant vs GIAB HG002 v4.2.1)
+
+| Variant Type | Truth Total | True Positives | False Negatives | Query Total | False Positives | Query Unknown | Genotype FP |
+| ------------ | ----------- | -------------- | --------------- | ----------- | --------------- | ------------- | ----------- |
+| SNP          | 3,460,128   | 20,703         | 3,439,425       | 46,301      | 7,769           | 17,819        | 7,736       |
+| INDEL        | 586,877     | 2,142          | 584,735         | 5,356       | 1,111           | 2,119         | 1,026       |
+
+---
 
 ## 🔹 Containerization
 
